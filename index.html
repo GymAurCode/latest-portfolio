@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Muhammad Umer Farooq — Software Engineer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#080b09;
+    --bg-alt:#0c110d;
+    --surface:#0e1712;
+    --surface-2:#111c15;
+    --border:#1b2b21;
+    --border-bright:#204030;
+    --green:#39ff9c;
+    --green-dim:#0fae66;
+    --green-glow:rgba(57,255,156,0.35);
+    --amber:#ffb454;
+    --text:#d3ded6;
+    --text-dim:#6f8478;
+    --text-faint:#3d4d44;
+    --red-dot:#ff5f56;
+    --yellow-dot:#ffbd2e;
+    --green-dot:#27c93f;
+    --radius:6px;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--mono);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+
+  /* themed scrollbar */
+  ::-webkit-scrollbar{width:10px; height:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg-alt);}
+  ::-webkit-scrollbar-thumb{
+    background:linear-gradient(180deg, var(--green-dim), var(--border-bright));
+    border-radius:100px;
+    border:2px solid var(--bg-alt);
+  }
+  ::-webkit-scrollbar-thumb:hover{background:var(--green);}
+  html{scrollbar-width:thin; scrollbar-color:var(--green-dim) var(--bg-alt);}
+
+  /* background matrix rain */
+  #matrix{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    opacity:0.16;
+    pointer-events:none;
+  }
+
+  /* CRT scanline overlay */
+  .crt-overlay{
+    position:fixed;
+    inset:0;
+    z-index:2;
+    pointer-events:none;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,0,0,0.06) 3px,
+      rgba(0,0,0,0) 4px
+    );
+    mix-blend-mode:overlay;
+  }
+  .vignette{
+    position:fixed;
+    inset:0;
+    z-index:1;
+    pointer-events:none;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.65) 100%);
+  }
+
+  .wrap{
+    position:relative;
+    z-index:3;
+    max-width:880px;
+    margin:0 auto;
+    padding:48px 20px 100px;
+    opacity:0;
+    display:none;
+  }
+  .wrap.active{
+    display:block;
+    opacity:0;
+    animation:fadeUp 0.8s ease forwards;
+  }
+
+  /* ---------- Boot screen ---------- */
+  .boot{
+    position:fixed;
+    inset:0;
+    z-index:50;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(8,11,9,0.7);
+    backdrop-filter:blur(2px);
+    transition:opacity 0.5s ease, visibility 0.5s ease;
+  }
+  .boot.hidden{opacity:0; visibility:hidden; pointer-events:none;}
+  .boot-term{
+    width:100%;
+    max-width:560px;
+    border:1px solid var(--border-bright);
+    border-radius:10px;
+    background:linear-gradient(180deg, var(--surface) 0%, var(--bg-alt) 100%);
+    box-shadow:0 0 0 1px rgba(0,0,0,0.4), 0 30px 80px -20px rgba(0,0,0,0.85), 0 0 70px -15px var(--green-glow);
+    overflow:hidden;
+  }
+  .boot-body{
+    padding:26px 24px 30px;
+    font-size:13px;
+  }
+  .boot-line{
+    color:var(--text-dim);
+    margin-bottom:6px;
+    min-height:1.4em;
+  }
+  .boot-line .accent{color:var(--green);}
+  .boot-line .path{color:var(--amber);}
+  .boot-cmd{
+    color:var(--text);
+    min-height:1.4em;
+    margin-bottom:18px;
+  }
+  .run-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:9px;
+    font-family:var(--mono);
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:0.03em;
+    color:var(--bg);
+    background:var(--green);
+    border:none;
+    border-radius:6px;
+    padding:11px 20px;
+    cursor:pointer;
+    opacity:0;
+    box-shadow:0 0 24px -6px var(--green-glow);
+    transition:transform 0.15s ease, box-shadow 0.2s ease, opacity 0.4s ease;
+    animation:btnPulse 2.4s ease-in-out infinite;
+  }
+  .run-btn.visible{opacity:1;}
+  .run-btn:hover{transform:translateY(-2px); box-shadow:0 0 34px -4px var(--green-glow);}
+  .run-btn:active{transform:translateY(0);}
+  @keyframes btnPulse{
+    0%,100%{box-shadow:0 0 24px -6px var(--green-glow);}
+    50%{box-shadow:0 0 36px -4px var(--green-glow);}
+  }
+
+  /* terminal window chrome */
+  .term{
+    border:1px solid var(--border-bright);
+    border-radius:10px;
+    background:linear-gradient(180deg, var(--surface) 0%, var(--bg-alt) 100%);
+    box-shadow:0 0 0 1px rgba(0,0,0,0.4), 0 30px 80px -20px rgba(0,0,0,0.8), 0 0 60px -20px var(--green-glow);
+    overflow:hidden;
+  }
+  .term-bar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:12px 16px;
+    background:var(--bg-alt);
+    border-bottom:1px solid var(--border);
+  }
+  .dot{width:11px;height:11px;border-radius:50%;display:inline-block;}
+  .dot.red{background:var(--red-dot);}
+  .dot.yellow{background:var(--yellow-dot);}
+  .dot.green{background:var(--green-dot);}
+  .term-title{
+    flex:1;
+    text-align:center;
+    font-size:12px;
+    color:var(--text-dim);
+    letter-spacing:0.03em;
+  }
+  .term-body{
+    padding:32px clamp(18px, 4vw, 48px) 8px;
+  }
+
+  /* prompt line */
+  .prompt{
+    display:flex;
+    gap:10px;
+    align-items:baseline;
+    font-size:13px;
+    color:var(--text-dim);
+    margin:0 0 14px;
+  }
+  .prompt .user{color:var(--green);}
+  .prompt .path{color:var(--amber);}
+  .prompt .sign{color:var(--text-faint);}
+  .prompt .cmd{color:var(--text);}
+
+  /* HERO */
+  .hero{
+    padding:36px 0 44px;
+    position:relative;
+  }
+  .brace{
+    font-size:clamp(60px, 12vw, 130px);
+    color:var(--green);
+    opacity:0.85;
+    line-height:1;
+    display:inline-block;
+    text-shadow:0 0 30px var(--green-glow), 0 0 6px var(--green-glow);
+    animation:pulse 3.2s ease-in-out infinite;
+  }
+  .brace.right{animation-delay:0.4s;}
+  @keyframes pulse{
+    0%,100%{ transform:scale(1); opacity:0.75; }
+    50%{ transform:scale(1.06); opacity:1; }
+  }
+  .hero-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:clamp(8px,2vw,28px);
+    flex-wrap:wrap;
+  }
+  .hero-center{
+    text-align:center;
+    min-width:260px;
+  }
+  .type-line{
+    font-size:clamp(13px, 2vw, 15px);
+    color:var(--text-dim);
+    min-height:1.4em;
+  }
+  .type-line .accent{color:var(--green);}
+  .hero-name{
+    margin:10px 0 6px;
+    font-size:clamp(22px, 4.2vw, 36px);
+    font-weight:800;
+    letter-spacing:-0.01em;
+    color:var(--text);
+    min-height:1.3em;
+  }
+  .hero-name .cursor{color:var(--green);}
+  .hero-role{
+    font-size:clamp(13px, 2.2vw, 16px);
+    color:var(--green);
+    font-weight:500;
+    letter-spacing:0.02em;
+    min-height:1.4em;
+  }
+  .cursor-blink{
+    display:inline-block;
+    width:0.55em;
+    background:var(--green);
+    margin-left:2px;
+    animation:blink 1s steps(1) infinite;
+  }
+  @keyframes blink{50%{opacity:0;}}
+
+  .hero-tags{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin-top:22px;
+    opacity:0;
+    animation:fadeUp 0.6s ease forwards;
+    animation-delay:2.6s;
+  }
+  .hero-tag{
+    font-size:11px;
+    padding:5px 10px;
+    border:1px solid var(--border-bright);
+    border-radius:100px;
+    color:var(--text-dim);
+    background:rgba(57,255,156,0.03);
+  }
+  @keyframes fadeUp{
+    from{opacity:0; transform:translateY(8px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+
+  /* section reveal */
+  .section{
+    padding:38px 0 6px;
+    opacity:0;
+    transform:translateY(16px);
+    transition:opacity 0.7s ease, transform 0.7s ease;
+  }
+  .section.in-view{opacity:1; transform:translateY(0);}
+  .section + .section{border-top:1px dashed var(--border);}
+
+  .comment{color:var(--text-faint);}
+  .key{color:var(--amber);}
+  .str{color:var(--green);}
+  .punc{color:var(--text-dim);}
+
+  .about-block{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:20px 22px;
+    font-size:13.5px;
+    overflow-x:auto;
+  }
+  .about-block .line{white-space:pre;}
+  .about-block .indent{padding-left:22px; display:block;}
+
+  /* skills */
+  .skill-group{margin-bottom:22px;}
+  .skill-group-title{
+    font-size:12px;
+    color:var(--text-dim);
+    margin-bottom:10px;
+  }
+  .skill-group-title .punc{color:var(--text-faint);}
+  .skill-tags{
+    display:flex;
+    flex-wrap:wrap;
+    gap:9px;
+  }
+  .skill-tag{
+    font-size:12.5px;
+    padding:7px 12px;
+    border:1px solid var(--border-bright);
+    border-radius:5px;
+    background:var(--surface-2);
+    color:var(--text);
+    transition:border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .skill-tag:hover{
+    border-color:var(--green);
+    color:var(--green);
+    box-shadow:0 0 16px -4px var(--green-glow);
+    transform:translateY(-2px);
+  }
+
+  /* projects */
+  .proj-list{display:flex; flex-direction:column; gap:16px;}
+  .proj-card{
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    background:var(--surface-2);
+    padding:20px 22px;
+    transition:border-color 0.25s ease, box-shadow 0.25s ease;
+  }
+  .proj-card:hover{
+    border-color:var(--border-bright);
+    box-shadow:0 0 24px -10px var(--green-glow);
+  }
+  .proj-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:8px;
+  }
+  .proj-name{
+    font-size:15px;
+    font-weight:700;
+    color:var(--text);
+  }
+  .proj-hash{
+    font-size:11px;
+    color:var(--text-faint);
+  }
+  .proj-desc{
+    font-size:13px;
+    color:var(--text-dim);
+    margin:0 0 12px;
+  }
+  .proj-tech{
+    display:flex;
+    flex-wrap:wrap;
+    gap:7px;
+    margin-bottom:12px;
+  }
+  .proj-tech span{
+    font-size:11px;
+    padding:3px 9px;
+    border-radius:100px;
+    color:var(--green);
+    background:rgba(57,255,156,0.06);
+    border:1px solid rgba(57,255,156,0.18);
+  }
+  .proj-links{display:flex; gap:16px;}
+  .proj-links a{
+    font-size:12px;
+    color:var(--text-dim);
+    text-decoration:none;
+    border-bottom:1px solid transparent;
+    transition:color 0.2s ease, border-color 0.2s ease;
+  }
+  .proj-links a:hover{color:var(--green); border-color:var(--green);}
+
+  /* footer */
+  .footer{
+    padding:36px 0 4px;
+    text-align:center;
+    font-size:12px;
+    color:var(--text-faint);
+  }
+  .footer .out{color:var(--text-dim);}
+  .social-row{
+    display:flex;
+    gap:18px;
+    justify-content:center;
+    margin:16px 0 18px;
+  }
+  .social-row a{
+    color:var(--text-dim);
+    display:inline-flex;
+    padding:8px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    transition:color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  }
+  .social-row a:hover{
+    color:var(--green);
+    border-color:var(--green);
+    transform:translateY(-2px);
+  }
+  .social-row svg{width:16px; height:16px; display:block;}
+
+  a:focus-visible, button:focus-visible{
+    outline:2px solid var(--green);
+    outline-offset:2px;
+  }
+
+  /* image terminal */
+  .img-output{
+    margin-top:20px;
+    display:none;
+    border-radius:var(--radius);
+    overflow:hidden;
+    border:1px solid var(--border-bright);
+    box-shadow:0 0 24px -10px var(--green-glow);
+  }
+  .img-output.visible{display:block; animation:glitchIn 0.6s ease forwards;}
+  .img-output img{width:100%; height:auto; display:block;}
+  .img-output.visible img{animation:glitchFlicker 1.4s ease-in-out 0.6s 3;}
+  .img-output.fading{animation:glitchOut 0.5s ease forwards;}
+  @keyframes glitchIn{
+    0%{opacity:0; clip-path:inset(40% 0 61% 0); transform:translateX(-12px);}
+    20%{clip-path:inset(20% 0 50% 0); transform:translateX(8px);}
+    40%{clip-path:inset(70% 0 10% 0); transform:translateX(-5px);}
+    60%{clip-path:inset(10% 0 80% 0); transform:translateX(3px);}
+    80%{clip-path:inset(50% 0 30% 0); transform:translateX(-2px);}
+    100%{opacity:1; clip-path:inset(0 0 0 0); transform:translateX(0);}
+  }
+  @keyframes glitchFlicker{
+    0%,100%{opacity:1; filter:none; transform:skewX(0deg);}
+    10%{opacity:0.92; filter:hue-rotate(90deg); transform:skewX(-3deg) translateX(4px);}
+    20%{opacity:0.88; filter:hue-rotate(-60deg); transform:skewX(2deg) translateX(-3px);}
+    30%{opacity:0.95; filter:none; transform:skewX(0deg);}
+    40%{opacity:0.85; filter:brightness(1.4) contrast(1.2); transform:skewX(-4deg) translateX(5px);}
+    50%{opacity:0.9; filter:hue-rotate(120deg); transform:skewX(3deg) translateX(-2px);}
+    60%{opacity:1; filter:none; transform:skewX(0);}
+    70%{opacity:0.87; clip-path:inset(30% 0 40% 0); transform:translateX(3px);}
+    80%{opacity:0.93; clip-path:inset(60% 0 20% 0); transform:translateX(-4px);}
+  }
+  @keyframes glitchOut{
+    0%{opacity:1; clip-path:inset(0 0 0 0); transform:translateX(0);}
+    20%{clip-path:inset(10% 0 60% 0); transform:translateX(6px);}
+    40%{clip-path:inset(50% 0 25% 0); transform:translateX(-8px);}
+    60%{clip-path:inset(30% 0 70% 0); transform:translateX(4px); opacity:0.5;}
+    80%{clip-path:inset(80% 0 5% 0); transform:translateX(-3px); opacity:0.2;}
+    100%{opacity:0; clip-path:inset(0 0 100% 0); transform:translateX(10px);}
+  }
+
+  /* contact form */
+  .contact-form{display:flex; flex-direction:column; gap:14px;}
+  .form-field{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:wrap;
+    font-size:13px;
+  }
+  .form-field.label-top{align-items:flex-start;}
+  .field-label{
+    color:var(--text-dim);
+    font-size:13px;
+    white-space:nowrap;
+  }
+  .field-input{
+    flex:1;
+    min-width:160px;
+    background:var(--bg-alt);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:10px 12px;
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--text);
+    transition:border-color 0.2s ease;
+  }
+  .field-input:focus{
+    outline:none;
+    border-color:var(--green);
+    box-shadow:0 0 12px -4px var(--green-glow);
+  }
+  .field-input::placeholder{color:var(--text-faint);}
+  .field-textarea{resize:vertical; min-height:80px;}
+  .form-success{
+    display:none;
+    margin-top:12px;
+    padding:12px 16px;
+    border:1px solid var(--green-dim);
+    border-radius:var(--radius);
+    background:rgba(57,255,156,0.06);
+    font-size:13px;
+  }
+  .form-success.visible{display:block; animation:fadeUp 0.4s ease forwards;}
+  .form-success .green{color:var(--green);}
+  .form-footer{font-size:11.5px; color:var(--text-faint); margin-top:4px;}
+
+  @media (max-width:560px){
+    .term-body{padding:24px 16px 8px;}
+    .hero-row{flex-direction:row; gap:6px;}
+    .brace{font-size:44px;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
+    html{scroll-behavior:auto;}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="matrix"></canvas>
+<div class="vignette"></div>
+<div class="crt-overlay"></div>
+
+<div class="boot" id="bootScreen">
+  <div class="boot-term">
+    <div class="term-bar">
+      <span class="dot red"></span>
+      <span class="dot yellow"></span>
+      <span class="dot green"></span>
+      <span class="term-title">guest@system:~$ zsh — 80×24</span>
+    </div>
+    <div class="boot-body">
+      <div class="boot-line"><span class="accent">guest</span><span class="path">@system</span>:~$ <span id="bootCmd"></span></div>
+      <div class="boot-cmd" id="bootStatus">&nbsp;</div>
+      <button class="run-btn" id="runBtn">▶ RUN umer-portfolio</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap" id="mainWrap">
+  <div class="term">
+    <div class="term-bar">
+      <span class="dot red"></span>
+      <span class="dot yellow"></span>
+      <span class="dot green"></span>
+      <span class="term-title">umer@portfolio:~$ zsh — 100×32</span>
+    </div>
+
+    <div class="term-body">
+
+      <!-- HERO -->
+      <section class="hero">
+        <div class="hero-row">
+          <span class="brace left">{</span>
+          <div class="hero-center">
+            <div class="type-line" id="typeLine">&nbsp;</div>
+            <div class="hero-name" id="typeName">&nbsp;</div>
+            <div class="hero-role" id="typeRole">&nbsp;</div>
+            <div class="hero-tags">
+              <span class="hero-tag">Software Engineer</span>
+              <span class="hero-tag">Mobile Expert</span>
+              <span class="hero-tag">Desktop Expert</span>
+              <span class="hero-tag">Web App Expert</span>
+            </div>
+          </div>
+          <span class="brace right">}</span>
+        </div>
+      </section>
+
+      <!-- ABOUT -->
+      <section class="section" id="about">
+        <div class="prompt">
+          <span class="user">umer@dev</span><span class="sign">:</span><span class="path">~</span><span class="sign">$</span>
+          <span class="cmd">cat about.json</span>
+        </div>
+        <div class="about-block">
+          <span class="line"><span class="punc">{</span></span>
+          <span class="line indent"><span class="key">"name"</span><span class="punc">:</span> <span class="str">"Muhammad Umer Farooq"</span><span class="punc">,</span></span>
+          <span class="line indent"><span class="key">"role"</span><span class="punc">:</span> <span class="str">"Software Engineer"</span><span class="punc">,</span></span>
+          <span class="line indent"><span class="key">"based_in"</span><span class="punc">:</span> <span class="str">"Islamabad, Pakistan"</span><span class="punc">,</span></span>
+          <span class="line indent"><span class="key">"expertise"</span><span class="punc">:</span> <span class="punc">[</span><span class="str">"mobile apps"</span><span class="punc">,</span> <span class="str">"desktop apps"</span><span class="punc">,</span> <span class="str">"web apps"</span><span class="punc">]</span><span class="punc">,</span></span>
+          <span class="line indent"><span class="key">"focus"</span><span class="punc">:</span> <span class="punc">[</span><span class="str">"backend systems"</span><span class="punc">,</span> <span class="str">"clean architecture"</span><span class="punc">,</span> <span class="str">"automation"</span><span class="punc">]</span><span class="punc">,</span></span>
+          <span class="line indent"><span class="key">"currently"</span><span class="punc">:</span> <span class="str">"building scalable APIs &amp; exploring systems programming"</span><span class="punc">,</span></span>
+          <span class="line indent"><span class="key">"philosophy"</span><span class="punc">:</span> <span class="str">"code is read more often than it's written"</span></span>
+          <span class="line"><span class="punc">}</span></span>
+        </div>
+      </section>
+
+      <!-- SKILLS -->
+      <section class="section" id="skills">
+        <div class="prompt">
+          <span class="user">umer@dev</span><span class="sign">:</span><span class="path">~</span><span class="sign">$</span>
+          <span class="cmd">ls -la ./skills</span>
+        </div>
+
+        <div class="skill-group">
+          <div class="skill-group-title"><span class="punc">//</span> languages</div>
+          <div class="skill-tags">
+            <span class="skill-tag">JavaScript</span>
+            <span class="skill-tag">TypeScript</span>
+            <span class="skill-tag">Python</span>
+            <span class="skill-tag">Dart</span>
+          </div>
+        </div>
+
+        <div class="skill-group">
+          <div class="skill-group-title"><span class="punc">//</span> frameworks &amp; libraries</div>
+          <div class="skill-tags">
+            <span class="skill-tag">React</span>
+            <span class="skill-tag">React Native</span>
+            <span class="skill-tag">Flutter</span>
+            <span class="skill-tag">Node.js</span>
+            <span class="skill-tag">Express</span>
+            <span class="skill-tag">Django</span>
+            <span class="skill-tag">Next.js</span>
+          </div>
+        </div>
+
+        <div class="skill-group">
+          <div class="skill-group-title"><span class="punc">//</span> tools &amp; platforms</div>
+          <div class="skill-tags">
+            <span class="skill-tag">Git</span>
+            <span class="skill-tag">Docker</span>
+            <span class="skill-tag">Linux</span>
+            <span class="skill-tag">AWS</span>
+            <span class="skill-tag">PostgreSQL</span>
+            <span class="skill-tag">MongoDB</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROJECTS -->
+      <section class="section" id="projects">
+        <div class="prompt">
+          <span class="user">umer@dev</span><span class="sign">:</span><span class="path">~</span><span class="sign">$</span>
+          <span class="cmd">git log --oneline --stat ./projects</span>
+        </div>
+
+        <div class="proj-list">
+          <div class="proj-card">
+            <div class="proj-head">
+              <span class="proj-name">Eyerflow</span>
+              <span class="proj-hash">#a1b2c3d</span>
+            </div>
+            <p class="proj-desc">Workflow &amp; process management platform designed to streamline day-to-day operations across teams.</p>
+            <div class="proj-tech">
+              <span>Web App</span><span>React</span><span>Node.js</span>
+            </div>
+            <div class="proj-links">
+              <a href="#">View repo →</a>
+            </div>
+          </div>
+
+          <div class="proj-card">
+            <div class="proj-head">
+              <span class="proj-name">EyerCRM</span>
+              <span class="proj-hash">#e4f5g6h</span>
+            </div>
+            <p class="proj-desc">Customer relationship management system for tracking leads, clients, and sales pipelines in one place.</p>
+            <div class="proj-tech">
+              <span>Web App</span><span>Node.js</span><span>MongoDB</span>
+            </div>
+            <div class="proj-links">
+              <a href="#">View repo →</a>
+            </div>
+          </div>
+
+          <div class="proj-card">
+            <div class="proj-head">
+              <span class="proj-name">Taqwa — Habit Mobile App</span>
+              <span class="proj-hash">#i7j8k9l</span>
+            </div>
+            <p class="proj-desc">Islamic habit-tracking mobile app that helps users build consistency in daily prayers and good habits.</p>
+            <div class="proj-tech">
+              <span>Mobile App</span><span>Flutter</span><span>Firebase</span>
+            </div>
+            <div class="proj-links">
+              <a href="#">View repo →</a>
+            </div>
+          </div>
+
+          <div class="proj-card">
+            <div class="proj-head">
+              <span class="proj-name">Freelancing Budget App</span>
+              <span class="proj-hash">#m0n1o2p</span>
+            </div>
+            <p class="proj-desc">Budget &amp; income tracker built for freelancers to manage project earnings, expenses, and savings goals.</p>
+            <div class="proj-tech">
+              <span>Mobile App</span><span>Flutter</span><span>SQLite</span>
+            </div>
+            <div class="proj-links">
+              <a href="#">View repo →</a>
+            </div>
+          </div>
+
+          <div class="proj-card">
+            <div class="proj-head">
+              <span class="proj-name">EyerCall</span>
+              <span class="proj-hash">#q3r4s5t</span>
+            </div>
+            <p class="proj-desc">Web-based video conferencing app for real-time meetings, screen sharing, and team collaboration.</p>
+            <div class="proj-tech">
+              <span>Web App</span><span>WebRTC</span><span>Socket.io</span>
+            </div>
+            <div class="proj-links">
+              <a href="#">View repo →</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- IMAGE TERMINAL -->
+      <section class="section" id="image-section">
+        <div class="prompt">
+          <span class="user">umer@dev</span><span class="sign">:</span><span class="path">~</span><span class="sign">$</span>
+          <span class="cmd">cat avatar.png</span>
+        </div>
+        <div class="term">
+          <div class="term-bar">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+            <span class="term-title">img preview — 80×24</span>
+          </div>
+          <div class="term-body" style="padding-bottom:28px;">
+            <div class="boot-line"><span class="accent">guest</span><span class="path">@system</span>:~$ <span id="imgCmd"></span></div>
+            <div class="boot-cmd" id="imgStatus">&nbsp;</div>
+            <button class="run-btn" id="imgRunBtn">▶ DISPLAY IMAGE</button>
+            <div class="img-output" id="imgOutput">
+              <img id="profileImg" src="avatar.png" alt="Avatar">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONTACT / GUIDANCE -->
+      <section class="section" id="contact">
+        <div class="prompt">
+          <span class="user">umer@dev</span><span class="sign">:</span><span class="path">~</span><span class="sign">$</span>
+          <span class="cmd">./send-message --to guidance</span>
+        </div>
+        <div class="term">
+          <div class="term-bar">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+            <span class="term-title">contact form — 80×24</span>
+          </div>
+          <div class="term-body" style="padding-bottom:28px;">
+            <form class="contact-form" id="contactForm">
+              <div class="form-field">
+                <label class="field-label"><span class="comment">//</span> name <span class="punc">=</span> <span class="str">"</span></label>
+                <input type="text" class="field-input" id="formName" placeholder="your name..." required>
+                <span class="str">"</span>
+              </div>
+              <div class="form-field">
+                <label class="field-label"><span class="comment">//</span> email <span class="punc">=</span> <span class="str">"</span></label>
+                <input type="email" class="field-input" id="formEmail" placeholder="your email..." required>
+                <span class="str">"</span>
+              </div>
+              <div class="form-field">
+                <label class="field-label"><span class="comment">//</span> subject <span class="punc">=</span> <span class="str">"</span></label>
+                <input type="text" class="field-input" id="formSubject" placeholder="what's this about?..." required>
+                <span class="str">"</span>
+              </div>
+              <div class="form-field label-top">
+                <label class="field-label" style="margin-top:10px;"><span class="comment">//</span> message <span class="punc">=</span> <span class="str">"</span></label>
+                <textarea class="field-input field-textarea" id="formMessage" placeholder="write your message here..." rows="4" required></textarea>
+                <span class="str" style="margin-top:10px;">"</span>
+              </div>
+              <button type="submit" class="run-btn visible" style="margin-top:8px;">▶ SEND MESSAGE</button>
+              <div class="form-footer"><span class="comment">//</span> expect a response within 24-48 hrs</div>
+            </form>
+            <div class="form-success" id="formSuccess">
+              <span class="green">✓ message sent successfully!</span>
+              <div style="color:var(--text-dim);margin-top:6px;font-size:12px;">thanks for reaching out. i'll get back to you soon.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
+      <div class="footer">
+        <div class="prompt" style="justify-content:center;">
+          <span class="user">umer@dev</span><span class="sign">:</span><span class="path">~</span><span class="sign">$</span>
+          <span class="cmd">echo $CONTACT</span>
+        </div>
+        <div class="social-row">
+          <a href="mailto:codewithumer45@gmail.com" aria-label="Email">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 6l8 7 8-7"/></svg>
+          </a>
+          <a href="https://github.com/GymAurCode" aria-label="GitHub" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 00-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.36 1.09 2.93.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.93 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 015 0c1.91-1.3 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.83-2.34 4.68-4.57 4.92.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0012 2z"/></svg>
+          </a>
+          <a href="https://www.linkedin.com/in/umer-mughal-7461a7373/" aria-label="LinkedIn" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.94 5a2 2 0 11-4-.02 2 2 0 014 .02zM3.34 8.75h3.6V21h-3.6V8.75zM9.75 8.75h3.45v1.68h.05c.48-.9 1.66-1.85 3.42-1.85 3.66 0 4.33 2.4 4.33 5.52V21h-3.6v-6.13c0-1.46-.03-3.34-2.03-3.34-2.04 0-2.35 1.6-2.35 3.24V21h-3.6V8.75z"/></svg>
+          </a>
+          <a href="https://wa.me/1umermughal" aria-label="WhatsApp" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.33 4.95L2.05 22l5.29-1.39a9.87 9.87 0 004.7 1.2h.01c5.46 0 9.9-4.45 9.9-9.9C21.96 6.45 17.5 2 12.04 2zm5.8 14.08c-.24.68-1.4 1.32-1.93 1.38-.5.06-1.02.28-3.42-.71-2.89-1.19-4.75-4.09-4.9-4.28-.14-.19-1.17-1.55-1.17-2.96 0-1.4.74-2.09 1-2.38.26-.28.57-.35.76-.35.19 0 .38 0 .55.01.18.01.42-.07.65.5.24.58.81 2 .88 2.15.07.14.12.31.02.5-.1.19-.15.31-.29.48-.14.17-.3.37-.43.5-.14.14-.29.29-.13.57.17.28.75 1.24 1.62 2.01 1.11.99 2.05 1.3 2.33 1.44.28.14.44.12.6-.07.17-.19.71-.83.9-1.11.19-.28.38-.24.64-.14.26.09 1.66.78 1.94.93.28.14.47.21.54.33.07.12.07.68-.17 1.35z"/></svg>
+          </a>
+          <a href="https://instagram.com/1umermughal" aria-label="Instagram" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1"/></svg>
+          </a>
+        </div>
+        <div class="footer" style="padding:0 0 6px;">
+          <span class="out" style="font-size:11.5px;">github.com/GymAurCode · codewithumer45@gmail.com · @1umermughal</span>
+        </div>
+        <div><span class="out">// thanks for stopping by — let's build something.</span></div>
+        <div style="margin-top:8px;">© <span id="year"></span> Muhammad Umer Farooq</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- Matrix rain ---------- */
+  (function(){
+    var canvas = document.getElementById('matrix');
+    var ctx = canvas.getContext('2d');
+    var glyphs = '01{}<>/;=+-*#$&%01アイウエオカキクケコ01'.split('');
+    var fontSize = 15;
+    var columns, drops;
+
+    function resize(){
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      columns = Math.floor(canvas.width / fontSize);
+      drops = new Array(columns).fill(1);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function draw(){
+      ctx.fillStyle = 'rgba(8,11,9,0.08)';
+      ctx.fillRect(0,0,canvas.width, canvas.height);
+      ctx.font = fontSize + 'px JetBrains Mono, monospace';
+      for(var i=0;i<drops.length;i++){
+        var text = glyphs[Math.floor(Math.random()*glyphs.length)];
+        ctx.fillStyle = '#39ff9c';
+        ctx.fillText(text, i*fontSize, drops[i]*fontSize);
+        if(drops[i]*fontSize > canvas.height && Math.random() > 0.975){
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+
+    if(!reduceMotion){
+      setInterval(draw, 45);
+    } else {
+      ctx.fillStyle = '#080b09';
+      ctx.fillRect(0,0,canvas.width, canvas.height);
+    }
+  })();
+
+  /* ---------- Typewriter hero sequence ---------- */
+  function typeInto(el, text, speed, cb){
+    if(reduceMotion){ el.textContent = text; if(cb) cb(); return; }
+    el.textContent = '';
+    var i = 0;
+    (function step(){
+      if(i <= text.length){
+        el.textContent = text.slice(0, i);
+        i++;
+        setTimeout(step, speed);
+      } else if(cb){ cb(); }
+    })();
+  }
+
+  var lineEl = document.getElementById('typeLine');
+  var nameEl = document.getElementById('typeName');
+  var roleEl = document.getElementById('typeRole');
+
+  function runHero(){
+    lineEl.innerHTML = '<span class="accent">&gt;</span> ';
+    var lineSpan = document.createElement('span');
+    lineEl.appendChild(lineSpan);
+    typeInto(lineSpan, 'console.log("Hello, World!");', 28, function(){
+      setTimeout(function(){
+        var nameSpan = document.createElement('span');
+        nameEl.textContent = '';
+        nameEl.appendChild(nameSpan);
+        var cursor = document.createElement('span');
+        cursor.className = 'cursor-blink';
+        cursor.innerHTML = '&nbsp;';
+        nameEl.appendChild(cursor);
+        typeInto(nameSpan, 'Muhammad Umer Farooq', 55, function(){
+          setTimeout(function(){
+            var roleSpan = document.createElement('span');
+            roleEl.textContent = '';
+            roleEl.appendChild(roleSpan);
+            typeInto(roleSpan, '// Software Engineer', 30);
+          }, 250);
+        });
+      }, 350);
+    });
+  }
+  /* ---------- Scroll reveal ---------- */
+  var sections = document.querySelectorAll('.section');
+  function startReveal(){
+    if('IntersectionObserver' in window && !reduceMotion){
+      var io = new IntersectionObserver(function(entries){
+        entries.forEach(function(entry){
+          if(entry.isIntersecting){
+            entry.target.classList.add('in-view');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.15 });
+      sections.forEach(function(s){ io.observe(s); });
+    } else {
+      sections.forEach(function(s){ s.classList.add('in-view'); });
+    }
+  }
+
+  /* ---------- Boot screen ---------- */
+  var bootScreen = document.getElementById('bootScreen');
+  var bootCmdEl = document.getElementById('bootCmd');
+  var bootStatusEl = document.getElementById('bootStatus');
+  var runBtn = document.getElementById('runBtn');
+  var mainWrap = document.getElementById('mainWrap');
+  var launched = false;
+
+  function launchPortfolio(){
+    if(launched) return;
+    launched = true;
+    bootScreen.classList.add('hidden');
+    mainWrap.classList.add('active');
+    document.body.style.overflow = '';
+    setTimeout(function(){
+      runHero();
+      startReveal();
+    }, 250);
+  }
+
+  document.body.style.overflow = 'hidden';
+
+  typeInto(bootCmdEl, './run umer-portfolio.sh', 45, function(){
+    setTimeout(function(){
+      bootStatusEl.textContent = '> Ready. Click RUN to launch the experience_';
+      bootStatusEl.style.color = 'var(--green)';
+      runBtn.classList.add('visible');
+    }, 300);
+  });
+
+  runBtn.addEventListener('click', launchPortfolio);
+  runBtn.addEventListener('keyup', function(e){
+    if(e.key === 'Enter' || e.key === ' ') launchPortfolio();
+  });
+
+  /* ---------- Image terminal ---------- */
+  var imgCmdEl = document.getElementById('imgCmd');
+  var imgStatusEl = document.getElementById('imgStatus');
+  var imgRunBtn = document.getElementById('imgRunBtn');
+  var imgOutput = document.getElementById('imgOutput');
+  var imgLaunch = false;
+
+  typeInto(imgCmdEl, 'cat avatar.png', 40, function(){
+    setTimeout(function(){
+      imgStatusEl.textContent = '> Image ready. Click DISPLAY to view_';
+      imgStatusEl.style.color = 'var(--green)';
+      imgRunBtn.classList.add('visible');
+    }, 300);
+  });
+
+  imgRunBtn.addEventListener('click', function(){
+    if(imgLaunch) return;
+    imgLaunch = true;
+    imgRunBtn.disabled = true;
+    imgOutput.classList.add('visible');
+    imgStatusEl.textContent = '> Glitching image... [5s]';
+    var sec = 5;
+    var timer = setInterval(function(){
+      sec--;
+      imgStatusEl.textContent = '> Displaying image... [' + sec + 's]';
+      if(sec <= 0){
+        clearInterval(timer);
+        imgOutput.classList.remove('visible');
+        imgOutput.classList.add('fading');
+        imgStatusEl.textContent = '> Image closed_';
+        setTimeout(function(){
+          imgOutput.style.display = 'none';
+          imgRunBtn.textContent = '▶ RE-RUN';
+          imgRunBtn.disabled = false;
+          imgLaunch = false;
+          imgOutput.classList.remove('fading');
+        }, 500);
+      }
+    }, 1000);
+  });
+
+  /* ---------- Contact form ---------- */
+  var contactForm = document.getElementById('contactForm');
+  var formSuccess = document.getElementById('formSuccess');
+
+  contactForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    var btn = contactForm.querySelector('.run-btn');
+    btn.textContent = '⏳ SENDING...';
+    btn.disabled = true;
+    setTimeout(function(){
+      contactForm.style.display = 'none';
+      formSuccess.classList.add('visible');
+    }, 1500);
+  });
+</script>
+
+</body>
+</html>
